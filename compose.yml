@@ -1,0 +1,69 @@
+volumes:
+  data:
+
+services:
+  app:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+      proxmox:
+        condition: service_started
+      gitlab:
+        condition: service_started
+      atlassian:
+        condition: service_started
+      notify:
+        condition: service_started
+
+  proxmox:
+    build:
+      context: ./proxmox
+      dockerfile: Dockerfile
+
+  gitlab:
+    build:
+      context: ./gitlab
+      dockerfile: Dockerfile
+
+  atlassian:
+    build:
+      context: ./atlassian
+      dockerfile: Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    ports:
+      - 8000:8000
+    volumes:
+      - ./atlassian/main.py:/app/main.py
+
+  notify:
+    build:
+      context: ./notify
+      dockerfile: Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:17.5-alpine3.21
+    volumes:
+      - data:/var/lib/postgresql/data
+    expose:
+      - 5432
+    ports:
+      - 5432:5432
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready", "-d", "$POSTGRES_DB", "-U", "$POSTGRES_USER"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+    
