@@ -1,0 +1,6 @@
+fastapi
+pydantic
+pydantic[email]
+atlassian-python-api
+uvicorn
+httpx

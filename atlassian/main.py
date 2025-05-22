@@ -1,7 +1,3 @@
-# main.py
-# Requirements:
-#   pip install fastapi uvicorn requests
-
 import os
 import requests
 from fastapi import FastAPI, HTTPException, APIRouter
@@ -283,5 +279,3 @@ def assign_all_confluence_permissions(payload: ConfluencePermissionAssign):
 
 # Include router
 app.include_router(router)
-
-# Run with: uvicorn main:app --reload

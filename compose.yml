@@ -2,6 +2,35 @@ volumes:
   data:
 
 services:
+  atlassian:
+    build:
+      context: ./atlassian
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    ports:
+      - 8000:8000
+    volumes:
+      - ./atlassian/main.py:/app/main.py
+
+  gitlab:
+    build:
+      context: ./gitlab
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    ports:
+      - 8001:8000
+    volumes:
+      - /usr/bin/ping:/usr/bin/ping
+      - ./gitlab/main.py:/app/main.py
+      - /etc/hosts:/etc/hosts
+
+  proxmox:
+    build:
+      context: ./proxmox
+      dockerfile: Dockerfile
+
   app:
     build:
       context: ./app
@@ -17,30 +46,6 @@ services:
         condition: service_started
       notify:
         condition: service_started
-
-  proxmox:
-    build:
-      context: ./proxmox
-      dockerfile: Dockerfile
-
-  gitlab:
-    build:
-      context: ./gitlab
-      dockerfile: Dockerfile
-
-  atlassian:
-    build:
-      context: ./atlassian
-      dockerfile: Dockerfile
-    depends_on:
-      db:
-        condition: service_healthy
-    env_file:
-      - .env
-    ports:
-      - 8000:8000
-    volumes:
-      - ./atlassian/main.py:/app/main.py
 
   notify:
     build:
