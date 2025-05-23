@@ -1,0 +1,42 @@
+---
+- name: Инициализация новой виртуальной машины
+  hosts: all
+  become: true
+
+  vars:
+    ssh_user: "root"  # имя пользователя внутри ВМ
+
+  tasks:
+    - name: Обновление пакетов
+      shell: apt update
+
+    - name: Установка curl
+      apt:
+        name: curl
+
+    - name: Установка vim
+      apt:
+        name: vim
+
+    - name: Установка Docker
+      shell: curl -fsSL https://get.docker.com | sh
+
+    - name: Добавление пользователя в группу docker
+      user:
+        name: "{{ ssh_user }}"
+        groups: docker
+        append: yes
+
+    - name: Создание директории SSH
+      file:
+        path: "/home/{{ ssh_user }}/.ssh"
+        state: directory
+        owner: "{{ ssh_user }}"
+        group: "{{ ssh_user }}"
+        mode: '0700'
+
+    - name: Добавление SSH-ключа
+      authorized_key:
+        user: "{{ ssh_user }}"
+        key: "{{ ssh_key }}"
+        state: present

@@ -13,6 +13,96 @@ headers = {
     "Content-Type": "application/json"
 }
 
+
+ci_config = '''
+stages:
+    - build
+    - test
+    - deploy
+
+build:
+    stage: build
+    image: docker:25.0.4-git
+    variables:
+        TAG: dev
+        DOCKERFILE_PATH: "./Dockerfile"
+    before_script:
+        - docker login $CI_REGISTRY -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD
+    script:
+        - DOCKER_BUILDKIT=1 docker build
+            --cache-from $CI_REGISTRY/$CI_PROJECT_PATH:latest
+            -f $DOCKERFILE_PATH
+            --push --rm
+            -t $CI_REGISTRY/$CI_PROJECT_PATH:latest
+            -t $CI_REGISTRY/$CI_PROJECT_PATH:$TAG .
+
+sast:
+    stage: test
+    image: sonarsource/sonar-scanner-cli:5.0
+    allow_failure: true
+    variables:
+        SONAR_USER_HOME: "$CI_PROJECT_DIR/.sonar"  # Defines the location of the analysis task cache
+        GIT_DEPTH: "0"  # Tells git to fetch all the branches of the project, required by the analysis task
+        PROJECT_NAME: $CI_PROJECT_NAME
+    before_script:
+        - apk add jq
+        - SONAR_STATUS=$(curl -k -s -o /dev/null -w "%{http_code}" -u "$SONAR_TOKEN:" -XPOST "${SONAR_HOST_URL}/api/projects/create?mainBranch=${CI_DEFAULT_BRANCH}&name=${CI_PROJECT_PATH_SLUG}&project=${CI_PROJECT_PATH_SLUG}&visibility=private")
+        - |
+        if [[ $SONAR_STATUS != 200 ]]; then
+            SONAR_ERROR=$(curl -k -s -u "$SONAR_TOKEN": -XPOST "${SONAR_HOST_URL}/api/projects/create?mainBranch=${CI_DEFAULT_BRANCH}&name=${CI_PROJECT_PATH_SLUG}&project=${CI_PROJECT_PATH_SLUG}&visibility=private" | jq ".errors[0].msg" -r)
+            if [[ $SONAR_ERROR == *"similar key already exists"* ]]; then
+            echo "Project already exists, continue scanning"
+            else
+            echo $SONAR_ERROR
+            exit 1
+            fi
+        fi
+        
+        - echo "sonar.projectKey=${CI_PROJECT_PATH_SLUG}" > sonar-project.properties
+        - echo "sonar.qualitygate.wait=true" >> sonar-project.properties
+        # - echo "sonar.exclusions=pnpm-lock.yaml" >> sonar-project.properties
+        - echo "sonar.java.binaries=./target/classes" >> sonar-project.properties
+        # - echo "sonar.exclusions=src/styles/**" >> sonar-project.properties
+    script:
+        - sonar-scanner
+    cache:
+        key: "${CI_JOB_NAME}"
+        paths:
+        - .sonar/cache
+
+sca:
+    stage: test
+    allow_failure: true
+    script:
+        - curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+        - syft . -o cyclonedx-xml=cyclonedx.xml
+        - |
+        curl -X 'POST' \
+        'https://dtrack.hexteam.tech:8080/api/v1/bom' \
+        -H 'accept: application/json' \
+        -H "X-Api-Key: ${DTRACK_TOKEN}" \
+        -H 'Content-Type: multipart/form-data' \
+        -F 'autoCreate=true' \
+        -F "projectName=$CI_PROJECT_PATH" \
+        -F 'projectVersion=1' -F "bom=@cyclonedx.xml" -k --fail
+
+deploy:
+    stage: deploy
+    variables:
+        SSH_KEY: $SSH_KEY_PRIVATE
+        DEV_SERVER: $DEV_SERVER
+        DEV_USER: root
+        PROJECT_DIR: $PROJECT_DIR
+        SERVICE_NAME: $SERVICE_NAME
+    script:
+        - chmod og= $SSH_KEY
+        - ssh -i $SSH_KEY -p 22 -o StrictHostKeyChecking=no ${DEPLOY_USER}@${DEPLOY_SERVER} \
+            "docker login ${CI_REGISTRY} -u ${CI_REGISTRY_USER} -p ${CI_REGISTRY_PASSWORD} &&
+            cd ${PROJECT_DIR} && docker compose pull ${SERVICE_NAME} && docker compose down --remove-orphans &&
+            docker compose up -d && docker image prune -f && docker container prune -f"
+'''
+
+
 router = APIRouter(prefix="/api/gitlab", tags=["GitLab Integration"])
 
 # Модели данных
