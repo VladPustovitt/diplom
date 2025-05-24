@@ -5,7 +5,7 @@ WORKDIR /app
 
 COPY requirements.txt .
 
-RUN pip install -r requirements.txt --no-cache-dir
+RUN pip install -r requirements.txt --no-cache-dir && ssh-keygen -t ed25519 -a 100 -N "" -f /root/.ssh/id_ed25519
 
 COPY . .
 

@@ -29,7 +29,7 @@ async def create_virtual_machine(req: VMCreateRequest):
         raise HTTPException(status_code=500, detail=str(e))
     
 app = FastAPI(
-    title="Gitlab Integration API",
+    title="Proxmox VE Integration API",
     openapi_url="/api/proxmox/openapi.json",
     docs_url="/api/proxmox/docs",
     redoc_url="/api/proxmox/redoc"

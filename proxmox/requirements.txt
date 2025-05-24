@@ -4,3 +4,4 @@ pydantic[email]
 atlassian-python-api
 uvicorn
 ansible
+ansible-runner

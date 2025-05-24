@@ -1,5 +1,6 @@
 volumes:
   data:
+  ssh_key:
 
 services:
   atlassian:
@@ -34,7 +35,7 @@ services:
       - 8002:8000
     volumes:
       - /etc/hosts:/etc/hosts
-      - /home/vspustovit/.ssh:/root/.ssh
+      - ssh_key:/root/.ssh
 
 
   app:

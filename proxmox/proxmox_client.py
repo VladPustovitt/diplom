@@ -1,6 +1,6 @@
 import requests
 import socket
-from config import PROXMOX_HOST, PROXMOX_USER, PROXMOX_TOKEN_NAME, PROXMOX_TOKEN
+from config import PROXMOX_HOST, PROXMOX_USER, PROXMOX_TOKEN_NAME, PROXMOX_TOKEN, SSH_KEY
 import time
 
 BASE_URL = f"https://{PROXMOX_HOST}:8006/api2/json"
@@ -40,7 +40,7 @@ def create_lxc_container(name: str, node: str, template_id: str="ubuntu-22.04-st
         "cores": 1,
         "net0": f"name=eth0,bridge=vmbr1,ip=192.168.100.{vm_id}/24,gw=192.168.100.1",
         "rootfs": "local-lvm:8",  # 8GB
-        "ssh-public-keys": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBnJAmNn3jrNaBuvpNrA06S3ijw35EhHbnRraeHNaMSc vspustovit@DESKTOP-BKBT4QJ",
+        "ssh-public-keys": SSH_KEY,
         "unprivileged": 1,
         "nameserver": "8.8.8.8",
         "start": 1,
