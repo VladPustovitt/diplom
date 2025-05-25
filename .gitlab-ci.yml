@@ -3,6 +3,8 @@ stages:
 
 sonarqube:
   stage: test
+  tags:
+    - kvm
   image: 
     name: $HARBOR_PROXY/sonarsource/sonar-scanner-cli:5.0
     entrypoint: [""]
@@ -42,6 +44,8 @@ sonarqube:
 sca:
   image: harbor.hexteam.tech/hexteam/deploy:1.0.0
   stage: test
+  tags:
+    - kvm
   allow_failure: true
   script:
     - curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
