@@ -47,9 +47,8 @@ def create_lxc_container(name: str, node: str, template_id: str="ubuntu-22.04-st
         "cmode": "shell"
     }
     response = requests.post(url, headers=HEADERS, data=payload, verify=False)
-    print(response.json())
     response.raise_for_status()
-    return vm_id
+    return {"response": response.json(), "vm_id": vm_id}
 
 def wait_for_lxc_ready(node: str, vm_id: int, timeout: int = 60):
     url = f"{BASE_URL}/nodes/{node}/lxc/{vm_id}/status/current"

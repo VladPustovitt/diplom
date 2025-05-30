@@ -24,7 +24,7 @@ async def create_virtual_machine(req: VMCreateRequest):
             raise HTTPException(status_code=400, detail="Invalid type: must be 'qemu' or 'lxc'")
         wait_for_ssh(f"192.168.100.{vm_id}")
         configure_vm(vm_id, req.ssh_key)
-        return {"status": "success", "vm_id": vm_id}
+        return {"status": "success", "proxmox": vm_id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     

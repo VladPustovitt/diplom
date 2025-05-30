@@ -182,11 +182,6 @@ class ProjectCreate(BaseModel):
     lead: Optional[str]
     project_type: str = Field("software", pattern="^(software|business|service_desk)$")
 
-class BoardCreate(BaseModel):
-    name: str
-    project_key: str
-    board_type: str = Field("scrum", pattern="^(scrum|kanban)$")
-
 class SpaceCreate(BaseModel):
     key: str = Field(..., min_length=2, max_length=10)
     name: str

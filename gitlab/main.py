@@ -16,9 +16,26 @@ headers = {
 
 ci_config = '''
 stages:
+    - obfuscate
     - build
     - test
     - deploy
+
+variables:
+  OBFS_OUTPUT_DIR: "dist_obfuscated"
+
+obfuscate:
+    stage: obfuscate
+    image: python:3.13.3-bookworm
+    before_script:
+        - pip install -U pip
+        - pip install pyarmor
+    script:
+        - pyarmor obfuscate -r -O $OBFS_OUTPUT_DIR src/
+    artifacts:
+        paths:
+            - $OBFS_OUTPUT_DIR/
+        expire_in: 1 week
 
 build:
     stage: build
@@ -29,6 +46,7 @@ build:
     before_script:
         - docker login $CI_REGISTRY -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD
     script:
+        - cp -r $OBFS_OUTPUT_DIR src
         - DOCKER_BUILDKIT=1 docker build
             --cache-from $CI_REGISTRY/$CI_PROJECT_PATH:latest
             -f $DOCKERFILE_PATH
@@ -86,6 +104,13 @@ sca:
         -F "projectName=$CI_PROJECT_PATH" \
         -F 'projectVersion=1' -F "bom=@cyclonedx.xml" -k --fail
 
+scan_container:
+    stage: test
+    allow_failure: true
+    image: aquasec/trivy:0.63.0
+    script:
+        - trivy image $CI_REGISTRY/$CI_PROJECT_PATH:$TAG
+
 deploy:
     stage: deploy
     variables:
@@ -119,7 +144,7 @@ class GroupCreateRequest(BaseModel):
 class GroupMembershipRequest(BaseModel):
     user_id: int
     group_id: int
-    access_level: int = 40  # Maintainer
+    access_level: int = 50  # Owner
 
 class ProjectCreateRequest(BaseModel):
     name: str
@@ -128,7 +153,7 @@ class ProjectCreateRequest(BaseModel):
 
 class CICDTemplateRequest(BaseModel):
     project_id: int
-    content: str
+    content: str = ci_config
 
 # 1. Создание пользователя
 @router.post("/user")
@@ -151,7 +176,7 @@ def create_user(data: UserCreateRequest):
 # 2. Создание группы
 @router.post("/group")
 def create_group(data: GroupCreateRequest):
-    r = requests.post(f"{GITLAB_API}/groups", headers=headers, json=data.dict(), verify=False)
+    r = requests.post(f"{GITLAB_API}/groups", headers=headers, json=data.model_dump(), verify=False)
     if r.status_code not in [201, 409]:
         raise HTTPException(status_code=400, detail=r.json())
     if r.status_code == 201:
@@ -174,7 +199,8 @@ def add_user_to_group(data: GroupMembershipRequest):
 # 4. Создание проекта
 @router.post("/project")
 def create_project(data: ProjectCreateRequest):
-    r = requests.post(f"{GITLAB_API}/projects", headers=headers, json=data.dict(), verify=False)
+    print(data.model_dump())
+    r = requests.post(f"{GITLAB_API}/projects", headers=headers, json=data.model_dump(), verify=False)
     if r.status_code != 201:
         raise HTTPException(status_code=400, detail=r.json())
     return r.json()
@@ -195,6 +221,10 @@ def add_ci_config(data: CICDTemplateRequest):
     if r.status_code not in [201, 400]:
         raise HTTPException(status_code=400, detail="Failed to add CI/CD config")
     return {"status": "ci config added", "code": r.status_code}
+
+@router.get("/default/ci/config")
+def get_default_ci_config():
+    return {"config": ci_config}
 
 # Создание приложения с доступом к Swagger на /api/gitlab/docs
 app = FastAPI(

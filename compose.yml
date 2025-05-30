@@ -1,6 +1,7 @@
 volumes:
   data:
   ssh_key:
+  data1:
 
 services:
   atlassian:
@@ -38,10 +39,17 @@ services:
       - ssh_key:/root/.ssh
 
 
-  app:
+  core:
     build:
-      context: ./app
+      context: ./core
       dockerfile: Dockerfile
+    ports:
+      - 80:8000
+    env_file:
+      - .env
+    volumes:
+      - /etc/hosts:/etc/hosts
+      - ./core:/app
     depends_on:
       db:
         condition: service_healthy
@@ -57,11 +65,28 @@ services:
   notify:
     build:
       context: ./notify
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.notify
+    command: alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8000
+    ports:
+      - 8003:8000
     depends_on:
       db:
         condition: service_healthy
-
+      redis:
+        condition: service_healthy
+  
+  celery_worker:
+    build:
+      context: ./notify
+      dockerfile: Dockerfile.celery
+    command: celery -A celery_app worker --loglevel=info
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
   db:
     image: postgres:17.5-alpine3.21
     volumes:
@@ -77,5 +102,29 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+  
+  db1:
+    image: postgres:17.5-alpine3.21
+    volumes:
+      - data1:/var/lib/postgresql/data
+    expose:
+      - 5432
+    ports:
+      - 5433:5432
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready", "-d", "$POSTGRES_DB", "-U", "$POSTGRES_USER"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-    
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: [ "CMD-SHELL", "redis-cli ping | grep PONG" ]
+      interval: 1s
+      timeout: 3s
+      retries: 5

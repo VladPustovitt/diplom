@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Register{% endblock %}
+{% block content %}
+<h2>Регистрация</h2>
+<form method="post" action="/register">
+    <div class="mb-3">
+        <label for="username" class="form-label">Логин</label>
+        <input type="text" class="form-control" name="username" required>
+    </div>
+    <div class="mb-3">
+        <label for="full_name" class="form-label">ФИО</label>
+        <input type="text" class="form-control" name="full_name" required>
+    </div>
+    <div class="mb-3">
+        <label for="password" class="form-label">Пароль</label>
+        <input type="password" class="form-control" name="password" required>
+    </div>
+    <div class="mb-3">
+        <label for="password" class="form-label">SSH Ключ</label>
+        <input type="text" class="form-control" name="ssh_key" required>
+    </div>
+    <div class="mb-3">
+        <label for="password" class="form-label">Электронная почта</label>
+        <input type="text" class="form-control" name="email" required>
+    </div>
+    <button type="submit" class="btn btn-success">Зарегистрироваться</button>
+</form>
+{% endblock %}
